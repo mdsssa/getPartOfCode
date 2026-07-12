@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кодовый сейф · Часть 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #101114;
+    --panel: #191B1F;
+    --panel-2: #1F2226;
+    --steel: #2B2F35;
+    --steel-line: #383D44;
+    --acid: #D4FF4F;
+    --acid-dim: #7A8A2E;
+    --ink: #E8E9EA;
+    --ink-dim: #888D94;
+    --error: #FF6B5D;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px 80px;
+    background-image: radial-gradient(ellipse at top, rgba(212,255,79,0.05), transparent 55%);
+  }
+
+  main {
+    width: 100%;
+    max-width: 620px;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--acid);
+    margin: 0 0 10px;
+    text-align: center;
+  }
+
+  h1 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 30px;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    text-align: center;
+    margin: 0 0 12px;
+  }
+
+  .sub {
+    text-align: center;
+    color: var(--ink-dim);
+    font-size: 14.5px;
+    line-height: 1.6;
+    max-width: 480px;
+    margin: 0 auto 36px;
+  }
+
+  .sub b { color: var(--ink); font-weight: 500; }
+
+  /* --- Dial --- */
+  .dial-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .dial {
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 32% 28%, #3a3f46, #1a1c20 72%);
+    border: 4px solid var(--steel-line);
+    position: relative;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.6), 0 20px 40px -20px rgba(0,0,0,0.7);
+  }
+
+  .dial::before {
+    content: '';
+    position: absolute;
+    inset: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(212,255,79,0.12);
+  }
+
+  .dial-ticks {
+    position: absolute;
+    inset: 0;
+  }
+
+  .tick {
+    position: absolute;
+    width: 2px;
+    height: 10px;
+    background: var(--steel-line);
+    left: 50%;
+    top: 4px;
+    transform-origin: 50% 60px;
+  }
+
+  .dial-needle {
+    position: absolute;
+    width: 4px;
+    height: 46px;
+    background: var(--acid);
+    left: 50%;
+    top: 50%;
+    transform-origin: 50% 0%;
+    transform: translateX(-50%) rotate(0deg);
+    transition: transform 500ms cubic-bezier(.34,1.56,.64,1);
+    border-radius: 2px;
+    box-shadow: 0 0 10px rgba(212,255,79,0.5);
+  }
+
+  .dial-hub {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--acid-dim);
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px solid #101114;
+  }
+
+  .dial-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .dial-status b { color: var(--acid); }
+
+  /* --- Slots row (flip display) --- */
+  .slots-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+  }
+
+  .slot-flip {
+    width: 46px;
+    height: 58px;
+    background: var(--panel-2);
+    border: 1px solid var(--steel-line);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--ink-dim);
+    perspective: 400px;
+  }
+
+  .slot-flip.solved {
+    color: var(--acid);
+    border-color: var(--acid-dim);
+    animation: flip-in 420ms ease;
+  }
+
+  @keyframes flip-in {
+    0% { transform: rotateX(90deg); opacity: 0.2; }
+    100% { transform: rotateX(0deg); opacity: 1; }
+  }
+
+  /* --- Puzzle cards --- */
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--steel-line);
+    border-radius: 6px;
+    padding: 18px 20px;
+    transition: border-color 200ms ease, opacity 200ms ease;
+  }
+
+  .card.solved {
+    border-color: var(--acid-dim);
+    opacity: 0.55;
+  }
+
+  .card-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .card-index {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--acid);
+    text-transform: uppercase;
+  }
+
+  .card-type {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ink-dim);
+    letter-spacing: 0.04em;
+    text-align: right;
+  }
+
+  .card-question {
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0 0 14px;
+  }
+
+  .card-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: #0C0D0F;
+    border: 1px solid var(--steel-line);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    padding: 10px 12px;
+    border-radius: 4px;
+  }
+
+  input[type="text"]:disabled {
+    opacity: 0.5;
+  }
+
+  button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: none;
+    transition: transform 100ms ease, opacity 150ms ease, background 150ms ease;
+  }
+
+  button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--acid);
+    outline-offset: 2px;
+  }
+
+  .btn-check {
+    background: var(--acid);
+    color: #12140F;
+    font-weight: 600;
+    padding: 10px 16px;
+  }
+
+  .btn-check:hover { filter: brightness(1.08); }
+  .btn-check:active { transform: scale(0.97); }
+  .btn-check:disabled { opacity: 0.35; cursor: default; }
+
+  .card-feedback {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    min-height: 16px;
+    margin-top: 8px;
+  }
+
+  .card-feedback.error { color: var(--error); }
+  .card-feedback.ok { color: var(--acid); }
+
+  .shake { animation: shake 300ms ease; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-3px); }
+  }
+
+  /* --- Safe door reveal --- */
+  .safe-door {
+    display: none;
+  }
+
+  .safe-door.open {
+    display: block;
+  }
+
+  .safe-frame {
+    position: relative;
+    perspective: 1400px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--acid-dim);
+    min-height: 190px;
+  }
+
+  .safe-interior {
+    text-align: center;
+    padding: 40px 20px;
+    background: rgba(212,255,79,0.05);
+    opacity: 0;
+    transition: opacity 300ms ease 500ms;
+  }
+
+  .safe-door.open .safe-interior {
+    opacity: 1;
+  }
+
+  .safe-door-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 10px;
+  }
+
+  .safe-door-code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--acid);
+    letter-spacing: 0.08em;
+    margin-bottom: 18px;
+  }
+
+  .btn-copy {
+    background: transparent;
+    border: 1px solid var(--acid-dim);
+    color: var(--ink);
+    padding: 9px 18px;
+  }
+
+  .btn-copy:hover { border-color: var(--acid); }
+
+  /* the door panel itself, hinged on the left edge */
+  .safe-door-panel {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(135deg, #3b4048 0%, #23262b 45%, #16181b 100%);
+    border-right: 2px solid rgba(0,0,0,0.4);
+    box-shadow: inset 0 0 0 6px #14161a, inset 0 0 30px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-origin: left center;
+    transform: rotateY(0deg);
+    z-index: 2;
+  }
+
+  .safe-door.open .safe-door-panel.swing {
+    animation: door-swing 950ms cubic-bezier(.65,.05,.36,1) forwards;
+  }
+
+  @keyframes door-swing {
+    0%   { transform: rotateY(0deg); }
+    10%  { transform: rotateY(6deg); }
+    18%  { transform: rotateY(-4deg); }
+    100% { transform: rotateY(-115deg); }
+  }
+
+  .door-wheel {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #565c64, #24272b 70%);
+    border: 3px solid #121417;
+    position: relative;
+    animation: wheel-spin 700ms ease-out;
+  }
+
+  @keyframes wheel-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(220deg); }
+  }
+
+  .door-spoke {
+    position: absolute;
+    width: 100%;
+    height: 4px;
+    background: var(--acid-dim);
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    border-radius: 2px;
+  }
+
+  .door-spoke.spoke-2 { transform: translateY(-50%) rotate(90deg); }
+
+  .door-bolts {
+    position: absolute;
+    inset: 10px;
+    pointer-events: none;
+  }
+
+  .door-bolts span {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #14161a;
+    box-shadow: inset 0 0 0 1px #45494f;
+  }
+
+  .door-bolts span:nth-child(1) { top: 0; left: 0; }
+  .door-bolts span:nth-child(2) { top: 0; right: 0; }
+  .door-bolts span:nth-child(3) { bottom: 0; left: 0; }
+  .door-bolts span:nth-child(4) { bottom: 0; right: 0; }
+
+  @media (max-width: 480px) {
+    .slot-flip { width: 38px; height: 50px; font-size: 20px; }
+    h1 { font-size: 24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shake, .slot-flip.solved { animation: none; }
+    .dial-needle { transition: none; }
+    .safe-door-panel.swing { animation: none; transform: rotateY(-115deg); }
+    .door-wheel { animation: none; }
+    .safe-interior { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <p class="eyebrow">Часть 2 · кодовый сейф</p>
+  <h1></h1>
+  <p class="sub">Реши 6 загадок — каждая открывает один символ кода.</p>
+
+  <div class="dial-wrap">
+    <div class="dial">
+      <div class="dial-ticks" id="dialTicks"></div>
+      <div class="dial-needle" id="dialNeedle"></div>
+      <div class="dial-hub"></div>
+    </div>
+    <p class="dial-status">Открыто слотов: <b id="solvedCount">0</b> из 6</p>
+  </div>
+
+  <div class="slots-row" id="slotsRow"></div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="safe-door" id="safeDoor">
+    <div class="safe-frame">
+      <div class="safe-interior">
+        <p class="safe-door-label">Сейф открыт · код части 2</p>
+        <p class="safe-door-code" id="finalCode">ft0K70</p>
+        <button class="btn-copy" id="copyBtn">Скопировать</button>
+      </div>
+      <div class="safe-door-panel" id="doorPanel">
+        <div class="door-wheel">
+          <div class="door-spoke"></div>
+          <div class="door-spoke spoke-2"></div>
+        </div>
+        <div class="door-bolts">
+          <span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const SLOTS = [
+    {
+      question: 'Сколько граней у обычного игрального кубика?',
+      answer: 6,
+      type: 'letter',
+      char: 'f',
+      typeLabel: '1'
+    },
+    {
+      question: 'Сколько лет скайриму?',
+      answer: 14,
+      type: 'letter',
+      char: 't',
+      typeLabel: '2'
+    },
+    {
+      question: 'sin 0 = ?',
+      answer: 0,
+      type: 'digit',
+      char: '0',
+      typeLabel: '3'
+    },
+    {
+      question: 'Сколько героев в доте?',
+      answer: 128,
+      type: 'letter',
+      char: 'K',
+      typeLabel: '4'
+    },
+    {
+      question: '√49 ?',
+      answer: 7,
+      type: 'digit',
+      char: '7',
+      typeLabel: '5'
+    },
+    {
+      question: 'Начало счисления индексов в программировании ?',
+      answer: 0,
+      type: 'digit',
+      char: '0',
+      typeLabel: '6'
+    }
+  ];
+
+  const FINAL_CODE = SLOTS.map(s => s.char).join('');
+  let solvedCount = 0;
+
+  const slotsRow = document.getElementById('slotsRow');
+  const cardsEl = document.getElementById('cards');
+  const dialNeedle = document.getElementById('dialNeedle');
+  const dialTicks = document.getElementById('dialTicks');
+  const solvedCountEl = document.getElementById('solvedCount');
+  const safeDoor = document.getElementById('safeDoor');
+  const finalCodeEl = document.getElementById('finalCode');
+  const copyBtn = document.getElementById('copyBtn');
+
+  finalCodeEl.textContent = FINAL_CODE;
+
+  // build dial ticks (12 marks)
+  for (let i = 0; i < 12; i++) {
+    const tick = document.createElement('div');
+    tick.className = 'tick';
+    tick.style.transform = `translateX(-50%) rotate(${i * 30}deg)`;
+    dialTicks.appendChild(tick);
+  }
+
+  // build flip slots
+  SLOTS.forEach((_, i) => {
+    const flip = document.createElement('div');
+    flip.className = 'slot-flip';
+    flip.id = `flip-${i}`;
+    flip.textContent = '?';
+    slotsRow.appendChild(flip);
+  });
+
+  // build puzzle cards
+  SLOTS.forEach((slot, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = `card-${i}`;
+
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-index">Слот ${i + 1}</span>
+        <span class="card-type">${slot.typeLabel}</span>
+      </div>
+      <p class="card-question">${slot.question}</p>
+      <div class="card-row">
+        <input type="text" inputmode="numeric" placeholder="Ответ — число" id="input-${i}">
+        <button class="btn-check" id="btn-${i}">Проверить</button>
+      </div>
+      <p class="card-feedback" id="feedback-${i}">&nbsp;</p>
+    `;
+    cardsEl.appendChild(card);
+
+    const input = card.querySelector(`#input-${i}`);
+    const btn = card.querySelector(`#btn-${i}`);
+    const feedback = card.querySelector(`#feedback-${i}`);
+
+    function tryAnswer() {
+      const val = parseInt(input.value.trim(), 10);
+      if (isNaN(val)) {
+        feedback.textContent = 'Впиши число.';
+        feedback.className = 'card-feedback error';
+        return;
+      }
+      if (val === slot.answer) {
+        feedback.textContent = '✔ Верно.';
+        feedback.className = 'card-feedback ok';
+        input.disabled = true;
+        btn.disabled = true;
+        card.classList.add('solved');
+
+        const flip = document.getElementById(`flip-${i}`);
+        flip.textContent = slot.char;
+        flip.classList.add('solved');
+
+        solvedCount++;
+        solvedCountEl.textContent = solvedCount;
+        dialNeedle.style.transform = `translateX(-50%) rotate(${solvedCount * 60}deg)`;
+
+        if (solvedCount === SLOTS.length) {
+          setTimeout(() => {
+            safeDoor.classList.add('open');
+            const doorPanel = document.getElementById('doorPanel');
+            // небольшая задержка, чтобы display:block применился до старта анимации
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => doorPanel.classList.add('swing'));
+            });
+          }, 300);
+        }
+      } else {
+        feedback.textContent = 'Не то — подумай ещё раз.';
+        feedback.className = 'card-feedback error';
+        card.classList.remove('shake');
+        void card.offsetWidth;
+        card.classList.add('shake');
+      }
+    }
+
+    btn.addEventListener('click', tryAnswer);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') tryAnswer();
+    });
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(FINAL_CODE);
+      copyBtn.textContent = 'Скопировано';
+      setTimeout(() => { copyBtn.textContent = 'Скопировать'; }, 1500);
+    } catch {
+      copyBtn.textContent = FINAL_CODE;
+    }
+  });
+
+  document.getElementById('doorPanel').addEventListener('animationend', (e) => {
+    if (e.animationName === 'door-swing') {
+      e.target.style.pointerEvents = 'none';
+    }
+  });
+</script>
+
+</body>
+</html>
