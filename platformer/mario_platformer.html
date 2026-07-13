@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Пиксельный платформер</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: radial-gradient(circle at 50% 20%, #3a3a4a, #17171f 70%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Press Start 2P', monospace;
+    overflow-x: hidden;
+    padding: 10px 0 30px;
+  }
+
+  #console {
+    background: linear-gradient(160deg, #d3d0e0, #a9a6bd 60%, #948fae);
+    border-radius: 18px 18px 40px 18px;
+    padding: 18px 18px 22px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6), inset 0 2px 2px rgba(255,255,255,0.4);
+    width: 340px;
+    max-width: 92vw;
+  }
+
+  #screenBezel {
+    background: #4a4760;
+    border-radius: 8px;
+    padding: 14px 12px 18px;
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.6);
+    position: relative;
+  }
+
+  #topRow {
+    display: flex; justify-content: space-between; align-items: center;
+    color: #c9c6db; font-size: 8px; margin-bottom: 8px; padding: 0 2px;
+  }
+  #topRow .dot { width: 6px; height: 6px; border-radius: 50%; background: #ff5b5b; box-shadow: 0 0 4px #ff5b5b; display:inline-block; margin-right:5px;}
+
+  #screenWrap {
+    position: relative;
+    border: 3px solid #222;
+    border-radius: 3px;
+    overflow: hidden;
+    line-height: 0;
+  }
+
+  canvas#game {
+    width: 100%;
+    height: auto;
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  #overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15,56,15,0.92);
+    color: #9bbc0f; display: none;
+    align-items: center; justify-content: center;
+    flex-direction: column; text-align: center;
+    font-family: 'Press Start 2P', monospace;
+    padding: 10px;
+  }
+  #overlay h1 { font-size: 11px; margin-bottom: 12px; line-height: 1.6; }
+  #code {
+    font-size: 14px; letter-spacing: 3px;
+    background: #0f380f; padding: 10px 14px; border-radius: 4px;
+    margin-top: 8px; color: #9bbc0f;
+    border: 2px solid #9bbc0f;
+  }
+  #restartBtn {
+    margin-top: 16px; padding: 8px 14px; font-size: 8px;
+    cursor: pointer; border: none; border-radius: 4px;
+    background: #9bbc0f; font-weight: bold; color: #0f380f;
+    font-family: 'Press Start 2P', monospace;
+  }
+
+  #brandRow {
+    display:flex; justify-content: space-between; align-items:center;
+    margin: 12px 6px 4px; color: #6a6684; font-size: 9px; letter-spacing: 1px;
+  }
+
+  #controls {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 22px; padding: 0 4px;
+  }
+
+  #dpad { position: relative; width: 96px; height: 96px; }
+  .dbtn {
+    position: absolute;
+    background: #3d3b4d;
+    box-shadow: inset 0 2px 2px rgba(255,255,255,0.15), 0 2px 3px rgba(0,0,0,0.5);
+  }
+  .dbtn.pressed { filter: brightness(1.4); }
+  #dLeft  { left: 0;    top: 32px;  width: 32px; height: 32px; border-radius: 6px 0 0 6px; }
+  #dRight { right: 0;   top: 32px;  width: 32px; height: 32px; border-radius: 0 6px 6px 0; }
+  #dUp    { left: 32px; top: 0;     width: 32px; height: 32px; border-radius: 6px 6px 0 0; }
+  #dDown  { left: 32px; bottom: 0;  width: 32px; height: 32px; border-radius: 0 0 6px 6px; }
+  #dCenter{ left: 32px; top: 32px;  width: 32px; height: 32px; background:#3d3b4d; }
+
+  #actionBtns { display: flex; gap: 14px; align-items: center; margin-right: 4px; }
+  .abtn {
+    width: 54px; height: 54px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #d1637a, #8f2c46 75%);
+    box-shadow: 0 4px 0 #5c1a2c, inset 0 2px 3px rgba(255,255,255,0.3);
+    color: #f5dfe4; font-size: 14px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Press Start 2P', monospace;
+  }
+  .abtn.pressed { transform: translateY(3px); box-shadow: 0 1px 0 #5c1a2c, inset 0 2px 3px rgba(255,255,255,0.3); }
+  #btnB { margin-top: 16px; }
+
+  #hint { text-align: center; color: #6a6684; font-size: 7px; margin-top: 16px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div id="console">
+  <div id="screenBezel">
+    <div id="topRow"><span><span class="dot"></span>POWER</span><span id="hudText">♥♥♥  •0</span></div>
+    <div id="screenWrap">
+      <canvas id="game" width="200" height="144"></canvas>
+      <div id="overlay">
+        <h1 id="overlayTitle">ПОБЕДА!</h1>
+        <div id="code" style="display:none;"></div>
+        <button id="restartBtn" onclick="restart()">ЗАНОВО</button>
+      </div>
+    </div>
+  </div>
+  <div id="brandRow"><span>POCKET&nbsp;PLAY</span><span>COLOR</span></div>
+
+  <div id="controls">
+    <div id="dpad">
+      <div class="dbtn" id="dUp"></div>
+      <div class="dbtn" id="dLeft"></div>
+      <div class="dbtn" id="dCenter"></div>
+      <div class="dbtn" id="dRight"></div>
+      <div class="dbtn" id="dDown"></div>
+    </div>
+    <div id="actionBtns">
+      <div class="abtn" id="btnB">B</div>
+      <div class="abtn" id="btnA">A</div>
+    </div>
+  </div>
+  <div id="hint">←→/A,D — ДВИЖЕНИЕ&nbsp;&nbsp;ПРОБЕЛ/W/A-КНОПКА — ПРЫЖОК</div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const W = canvas.width, H = canvas.height;
+
+const PAL = { darkest:'#0f380f', dark:'#306230', light:'#8bac0f', lightest:'#9bbc0f' };
+
+const WIN_CODE = "d67op4";
+const GRAVITY = 0.32;
+const JUMP_V = -6.0;
+const ACCEL = 0.35;
+const MAX_SPEED = 2.1;
+const FRICTION = 0.84;
+
+let keys = {};
+document.addEventListener('keydown', e => { keys[e.code] = true; });
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+function bindHold(el, keyName) {
+  const on = (e) => { e.preventDefault(); keys[keyName] = true; el.classList.add('pressed'); };
+  const off = (e) => { e.preventDefault(); keys[keyName] = false; el.classList.remove('pressed'); };
+  el.addEventListener('touchstart', on, {passive:false});
+  el.addEventListener('touchend', off, {passive:false});
+  el.addEventListener('touchcancel', off, {passive:false});
+  el.addEventListener('mousedown', on);
+  el.addEventListener('mouseup', off);
+  el.addEventListener('mouseleave', off);
+}
+bindHold(document.getElementById('dLeft'), 'ArrowLeft');
+bindHold(document.getElementById('dRight'), 'ArrowRight');
+bindHold(document.getElementById('btnA'), 'Space');
+bindHold(document.getElementById('btnB'), 'Space');
+
+let cameraX = 0;
+let lives = 3;
+let gameOver = false;
+let coinCount = 0;
+
+const player = { x: 16, y: 90, w: 12, h: 18, vx: 0, vy: 0, onGround:false, facing:1, startX:16, startY:90, animT:0 };
+
+const levelWidth = 1500;
+const platforms = [
+  {x:0,   y:128, w:300, h:16},
+  {x:340, y:128, w:140, h:16},
+  {x:520, y:128, w:90,  h:16},
+  {x:660, y:128, w:230, h:16},
+  {x:950, y:128, w:550, h:16},
+
+  {x:140, y:98,  w:36, h:9},
+  {x:230, y:76,  w:36, h:9},
+  {x:380, y:100, w:32, h:9},
+  {x:440, y:80,  w:32, h:9},
+  {x:540, y:96,  w:30, h:9},
+  {x:680, y:100, w:36, h:9},
+  {x:760, y:80,  w:36, h:9},
+  {x:840, y:100, w:36, h:9},
+  {x:1000,y:96,  w:36, h:9},
+  {x:1100,y:76,  w:36, h:9},
+];
+
+let coins = [
+  {x:158, y:86, taken:false}, {x:248, y:64, taken:false},
+  {x:556, y:84, taken:false}, {x:778, y:68, taken:false},
+  {x:1018,y:84, taken:false}, {x:1330,y:60, taken:false}
+];
+
+let enemies = [
+  {x:150, y:110, w:12, h:12, vx:-0.6, minX:0,   maxX:288, alive:true},
+  {x:700, y:110, w:12, h:12, vx:0.6,  minX:660, maxX:878, alive:true},
+  {x:1050,y:110, w:12, h:12, vx:-0.6, minX:950, maxX:1488,alive:true},
+];
+
+const flag = {x: 1450, y: 44, w: 4, h: 84};
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x &&
+         a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function resetPlayer() { player.x = player.startX; player.y = player.startY; player.vx=0; player.vy=0; }
+
+function fullReset() {
+  lives = 3; gameOver = false; coinCount = 0;
+  coins.forEach(c => c.taken = false);
+  enemies.forEach(e => e.alive = true);
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('code').style.display = 'none';
+  resetPlayer();
+  updateHud();
+}
+function restart(){ fullReset(); }
+
+function updateHud() {
+  let hearts = '♥'.repeat(Math.max(lives,0)) + '·'.repeat(Math.max(3-lives,0));
+  document.getElementById('hudText').textContent = hearts + '  •' + coinCount;
+}
+
+function loseLife() {
+  lives--; updateHud();
+  if (lives <= 0) endGame(false); else resetPlayer();
+}
+
+function endGame(won) {
+  gameOver = true;
+  const overlay = document.getElementById('overlay');
+  const title = document.getElementById('overlayTitle');
+  const codeDiv = document.getElementById('code');
+  overlay.style.display = 'flex';
+  if (won) {
+    title.textContent = 'ПОБЕДА!';
+    codeDiv.style.display = 'block';
+    codeDiv.textContent = WIN_CODE;
+  } else {
+    title.textContent = 'ИГРА ОКОНЧЕНА';
+    codeDiv.style.display = 'none';
+  }
+}
+
+function update() {
+  if (gameOver) return;
+  player.animT += Math.abs(player.vx) > 0.2 ? 1 : 0;
+
+  if (keys['ArrowLeft'] || keys['KeyA']) { player.vx -= ACCEL; player.facing = -1; }
+  if (keys['ArrowRight']|| keys['KeyD']) { player.vx += ACCEL; player.facing = 1; }
+  if ((keys['Space'] || keys['KeyW'] || keys['ArrowUp']) && player.onGround) {
+    player.vy = JUMP_V; player.onGround = false;
+  }
+
+  player.vx *= FRICTION;
+  if (Math.abs(player.vx) > MAX_SPEED) player.vx = MAX_SPEED * Math.sign(player.vx);
+  if (Math.abs(player.vx) < 0.03) player.vx = 0;
+
+  player.vy += GRAVITY;
+  if (player.vy > 7) player.vy = 7;
+
+  player.x += player.vx;
+  if (player.x < 0) player.x = 0;
+  if (player.x + player.w > levelWidth) player.x = levelWidth - player.w;
+
+  player.onGround = false;
+  player.y += player.vy;
+  for (const p of platforms) {
+    if (rectsOverlap(player, p)) {
+      if (player.vy > 0 && (player.y + player.h - player.vy) <= p.y + 1) {
+        player.y = p.y - player.h; player.vy = 0; player.onGround = true;
+      } else if (player.vy < 0 && (player.y - player.vy) >= p.y + p.h - 1) {
+        player.y = p.y + p.h; player.vy = 0;
+      } else {
+        if (player.x + player.w/2 < p.x + p.w/2) player.x = p.x - player.w;
+        else player.x = p.x + p.w;
+        player.vx = 0;
+      }
+    }
+  }
+
+  if (player.y > H + 20) { loseLife(); return; }
+
+  for (const c of coins) {
+    if (!c.taken && Math.abs(c.x - (player.x+player.w/2)) < 10 && Math.abs(c.y - (player.y+player.h/2)) < 10) {
+      c.taken = true; coinCount++; updateHud();
+    }
+  }
+
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    e.x += e.vx;
+    if (e.x < e.minX || e.x + e.w > e.maxX) e.vx *= -1;
+    if (rectsOverlap(player, e)) {
+      if (player.vy > 0 && player.y + player.h - player.vy <= e.y + 4) {
+        e.alive = false; player.vy = -4.2;
+      } else { loseLife(); return; }
+    }
+  }
+
+  if (rectsOverlap(player, flag)) { endGame(true); return; }
+
+  cameraX = player.x - W/2 + player.w/2;
+  if (cameraX < 0) cameraX = 0;
+  if (cameraX > levelWidth - W) cameraX = levelWidth - W;
+}
+
+function drawPixelRect(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+}
+
+function drawBackground() {
+  drawPixelRect(0, 0, W, H, PAL.lightest);
+  ctx.fillStyle = PAL.light;
+  for (let i = 0; i < 6; i++) {
+    let hx = (i * 140 - cameraX * 0.3) % (levelWidth * 0.4 + 200) - 40;
+    ctx.beginPath();
+    ctx.ellipse(hx, 108, 44, 22, 0, Math.PI, 0);
+    ctx.fill();
+  }
+  for (let i = 0; i < 10; i++) {
+    let bx = (i * 90 - cameraX * 0.6) % (levelWidth + 200) - 40;
+    ctx.beginPath();
+    ctx.ellipse(bx, 122, 16, 8, 0, Math.PI, 0);
+    ctx.fill();
+  }
+}
+
+function drawPlatform(p) {
+  const px = p.x - cameraX;
+  if (px + p.w < 0 || px > W) return;
+  drawPixelRect(px, p.y, p.w, p.h, PAL.dark);
+  drawPixelRect(px, p.y, p.w, 3, PAL.darkest);
+  ctx.strokeStyle = PAL.darkest;
+  ctx.lineWidth = 1;
+  for (let bx = 0; bx < p.w; bx += 10) {
+    ctx.beginPath();
+    ctx.moveTo(px + bx + 0.5, p.y + 3);
+    ctx.lineTo(px + bx + 0.5, p.y + p.h);
+    ctx.stroke();
+  }
+}
+
+function drawCoin(c) {
+  const cx = c.x - cameraX;
+  if (cx < -10 || cx > W + 10) return;
+  const bob = Math.sin(Date.now()/200 + c.x) * 1.5;
+  drawPixelRect(cx-3, c.y+bob-3, 6, 6, PAL.darkest);
+  drawPixelRect(cx-2, c.y+bob-2, 4, 4, PAL.light);
+}
+
+function drawEnemy(e) {
+  if (!e.alive) return;
+  const ex = e.x - cameraX;
+  if (ex + e.w < 0 || ex > W) return;
+  drawPixelRect(ex, e.y, e.w, e.h, PAL.darkest);
+  drawPixelRect(ex+2, e.y+2, e.w-4, e.h-6, PAL.dark);
+  drawPixelRect(ex+2, e.y+4, 2, 2, PAL.lightest);
+  drawPixelRect(ex+e.w-4, e.y+4, 2, 2, PAL.lightest);
+  drawPixelRect(ex+1, e.y+e.h-2, 3, 2, PAL.darkest);
+  drawPixelRect(ex+e.w-4, e.y+e.h-2, 3, 2, PAL.darkest);
+}
+
+function drawFlag() {
+  const fx = flag.x - cameraX;
+  drawPixelRect(fx, flag.y, 2, flag.h, PAL.darkest);
+  ctx.fillStyle = PAL.dark;
+  ctx.beginPath();
+  ctx.moveTo(fx+2, flag.y+2);
+  ctx.lineTo(fx+16, flag.y+8);
+  ctx.lineTo(fx+2, flag.y+14);
+  ctx.fill();
+  drawPixelRect(fx-4, flag.y+flag.h, 10, 3, PAL.darkest);
+}
+
+function drawPlayer() {
+  const px = Math.round(player.x - cameraX);
+  const py = Math.round(player.y);
+  const step = player.onGround && Math.abs(player.vx) > 0.3 ? Math.floor(player.animT/6)%2 : 0;
+  ctx.save();
+  ctx.translate(px + player.w/2, 0);
+  if (player.facing < 0) ctx.scale(-1, 1);
+  ctx.translate(-player.w/2, 0);
+
+  drawPixelRect(1, py, player.w-2, 4, PAL.darkest);
+  drawPixelRect(-1, py+3, player.w+2, 2, PAL.darkest);
+  drawPixelRect(1, py+5, player.w-2, 5, PAL.light);
+  drawPixelRect(1, py+8, player.w-2, 2, PAL.darkest);
+  drawPixelRect(player.w-4, py+6, 2, 2, PAL.darkest);
+  drawPixelRect(0, py+10, player.w, 5, PAL.dark);
+  drawPixelRect(2, py+10, 2, 2, PAL.light);
+  drawPixelRect(player.w-4, py+10, 2, 2, PAL.light);
+  drawPixelRect(-2, py+10, 2, 4, PAL.light);
+  drawPixelRect(player.w, py+10, 2, 4, PAL.light);
+  if (step === 0) {
+    drawPixelRect(0, py+15, 4, 3, PAL.darkest);
+    drawPixelRect(player.w-4, py+15, 4, 3, PAL.darkest);
+  } else {
+    drawPixelRect(1, py+15, 4, 3, PAL.darkest);
+    drawPixelRect(player.w-5, py+14, 4, 3, PAL.darkest);
+  }
+  ctx.restore();
+}
+
+function draw() {
+  drawBackground();
+  for (const p of platforms) drawPlatform(p);
+  for (const c of coins) if (!c.taken) drawCoin(c);
+  for (const e of enemies) drawEnemy(e);
+  drawFlag();
+  drawPlayer();
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+updateHud();
+loop();
+</script>
+</body>
+</html>
