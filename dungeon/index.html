@@ -223,11 +223,11 @@
           </svg>
         </div>
         <div id="finalCode">FFWGTE</div>
-        <button id="copyBtn">Скопировать код</button>
+        <button id="copyBtn">Скопировать</button>
       </div>
     </div>
   </div>
-  <div id="brandRow"><span>GAMEBOY&nbsp;</span><span id="roomLabel">ВХОД</span></div>
+  <div id="brandRow"><span>GAMEBOY COLOR™&nbsp;</span><span id="roomLabel">ВХОД</span></div>
 
   <div id="controls">
     <div id="dpad">
@@ -242,7 +242,7 @@
       <div class="abtn" id="btnA">A</div>
     </div>
   </div>
-  <div id="hint">WASD / КРЕСТОВИНА — ДВИЖЕНИЕ<br>ПРОБЕЛ / A — АТАКА</div>
+  <div id="hint"><br></div>
 </div>
 
 <script>
@@ -487,7 +487,7 @@
 
   function makeSlime(x, y) {
     return {
-      type: 'slime', x, y, w: 18, h: 16, hp: 1, hitCooldown: 0,
+      type: 'slime', x, y, w: 18, h: 16, hp: 2, hitCooldown: 0,
       vx: (Math.random() < 0.5 ? -1 : 1) * 0.6,
       vy: (Math.random() < 0.5 ? -1 : 1) * 0.6,
       alive: true
@@ -504,7 +504,7 @@
   function makeBat(x, y) {
     return {
       type: 'bat', x, y, w: 14, h: 12, hp: 1, hitCooldown: 0,
-      vx: 0, vy: 0, wanderTimer: 0, speed: 1.3, alive: true
+      vx: 0, vy: 0, wanderTimer: 0, speed: 133, alive: true
     };
   }
 
