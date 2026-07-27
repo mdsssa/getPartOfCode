@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Боевая арена · Часть 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0D0B14;
+    --ink: #E9E6F2;
+    --ink-dim: #8B87A3;
+    --hp-green: #5FC26E;
+    --hp-yellow: #E8C547;
+    --hp-red: #E8546B;
+    --gold: #E8C547;
+    --hero-body: #4FD1C5;
+    --hero-dark: #2E9E93;
+    --glitch-a: #5FE87A;
+    --glitch-b: #E85FD1;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 14px 50px;
+  }
+
+  .eyebrow {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    margin: 0 0 12px;
+    text-align: center;
+  }
+
+  h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 17px;
+    line-height: 1.6;
+    text-align: center;
+    margin: 0 0 14px;
+  }
+
+  .sub {
+    text-align: center;
+    color: var(--ink-dim);
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 480px;
+    margin: 0 0 22px;
+  }
+
+  .sub b { color: var(--ink); }
+
+  /* --- Console shell --- */
+  .console-shell {
+    width: 640px;
+    max-width: 100%;
+    background: linear-gradient(155deg, #A88CE0 0%, #7B5FC9 45%, #5B3F8C 100%);
+    border-radius: 40px;
+    padding: 22px 30px 26px;
+    box-shadow:
+      0 34px 70px -25px rgba(0,0,0,0.7),
+      inset 0 3px 0 rgba(255,255,255,0.25),
+      inset 0 -6px 14px rgba(0,0,0,0.25),
+      inset 0 0 0 1px rgba(255,255,255,0.08);
+    position: relative;
+  }
+
+  .console-shell::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 26px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #5FE87A;
+    box-shadow: 0 0 6px 2px rgba(95,232,122,0.7);
+  }
+
+  .console-shell::after {
+    content: '';
+    position: absolute;
+    top: 16px;
+    right: 30px;
+    width: 44px;
+    height: 4px;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.25) 1.5px, transparent 1.5px);
+    background-size: 8px 4px;
+  }
+
+  .shell-wing {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 90px;
+    height: 88%;
+    background: linear-gradient(155deg, #A88CE0 0%, #7B5FC9 100%);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.2);
+    z-index: 0;
+  }
+
+  .shell-wing.left { left: -34px; border-radius: 60% 20px 20px 55%; }
+  .shell-wing.right { right: -34px; border-radius: 20px 60% 55% 20px; }
+
+  .console-shell > * { position: relative; z-index: 1; }
+
+  .game-wrap {
+    position: relative;
+    width: 100%;
+    background: #14111F;
+    border-radius: 14px;
+    padding: 10px;
+    box-shadow: inset 0 3px 10px rgba(0,0,0,0.6), inset 0 0 0 2px rgba(0,0,0,0.4);
+  }
+
+  #gameCanvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #6B8CC9;
+    border: 4px solid #14111F;
+    border-radius: 6px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  .console-name {
+    text-align: center;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.85);
+    margin: 14px 0 4px;
+    user-select: none;
+  }
+
+  /* --- Skill menu --- */
+  .skill-menu {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 0 2px;
+  }
+
+  .skill-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10.5px;
+    text-align: left;
+    padding: 10px 12px;
+    background: #14111F;
+    color: var(--ink);
+    border: 2px solid #2A2640;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 100ms ease, border-color 150ms ease, opacity 150ms ease;
+  }
+
+  .skill-btn .skill-desc {
+    display: block;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 10px;
+    color: var(--ink-dim);
+    margin-top: 4px;
+  }
+
+  .skill-btn:hover:not(:disabled) { border-color: var(--gold); }
+  .skill-btn:active:not(:disabled) { transform: scale(0.97); }
+  .skill-btn:disabled { opacity: 0.35; cursor: default; }
+  .skill-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* --- Overlay --- */
+  .overlay {
+    position: absolute;
+    inset: 4px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13,11,20,0.92);
+    border-radius: 6px;
+    text-align: center;
+    padding: 20px;
+    z-index: 5;
+  }
+
+  .overlay.show { display: flex; }
+
+  .overlay-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: var(--gold);
+    margin: 0 0 14px;
+    line-height: 1.6;
+  }
+
+  .final-code {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 20px;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    margin-bottom: 18px;
+  }
+
+  .overlay-sub {
+    color: var(--ink-dim);
+    font-size: 13.5px;
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+
+  button.action-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 3px;
+    border: none;
+    padding: 12px 18px;
+    background: var(--gold);
+    color: #1A1520;
+    transition: transform 100ms ease, filter 150ms ease;
+  }
+
+  button.action-btn:hover { filter: brightness(1.1); }
+  button.action-btn:active { transform: scale(0.96); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .overlay.show { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<p class="eyebrow">Часть 2 · арена</p>
+<h1>Победи цифровой сбой</h1>
+<p class="sub">Пошаговый бой. Выбирай приём кнопкой — <b>Искра</b> копит заряд, <b>Разряд</b> тратит весь заряд на мощный удар, <b>Щит</b> смягчает следующий удар противника.</p>
+
+<div class="console-shell">
+  <div class="shell-wing left"></div>
+  <div class="shell-wing right"></div>
+  <div class="game-wrap">
+    <canvas id="gameCanvas" width="240" height="180"></canvas>
+
+    <div class="overlay" id="overlay">
+      <div>
+        <p class="overlay-title" id="overlayTitle">Сбой побеждён</p>
+        <p class="final-code" id="finalCode">ft0K70</p>
+        <p class="overlay-sub" id="overlaySub">Это код части 2 — неси его дальше.</p>
+        <button class="action-btn" id="copyBtn">Скопировать код</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="console-name">ARENACOM</p>
+
+  <div class="skill-menu">
+    <button class="skill-btn" id="btnSpark">ИСКРА<span class="skill-desc">урон + заряд</span></button>
+    <button class="skill-btn" id="btnDischarge">РАЗРЯД<span class="skill-desc">нужен полный заряд</span></button>
+    <button class="skill-btn" id="btnGuard">ЩИТ<span class="skill-desc">блок + заряд</span></button>
+    <button class="skill-btn" id="btnRetry" style="display:none;">ЗАНОВО<span class="skill-desc">начать бой снова</span></button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const FINAL_CODE = 'ft0K70';
+
+  const overlayEl = document.getElementById('overlay');
+  const overlayTitleEl = document.getElementById('overlayTitle');
+  const overlaySubEl = document.getElementById('overlaySub');
+  const btnSpark = document.getElementById('btnSpark');
+  const btnDischarge = document.getElementById('btnDischarge');
+  const btnGuard = document.getElementById('btnGuard');
+  const btnRetry = document.getElementById('btnRetry');
+
+  const GLYPHS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  function freshState() {
+    return {
+      player: { hp: 40, maxHp: 40, charge: 0, maxCharge: 3, guarding: false },
+      enemy: { hp: 60, maxHp: 60 },
+      turn: 'player', // 'player' | 'enemy' | 'over'
+      log: 'Сбой материализовался. Выбери приём.',
+      popups: [],
+      shake: 0,
+      zap: null,       // { fromRight: bool, timer }
+      enemyFlash: 0,
+      playerFlash: 0,
+      guardFlashNext: false,
+      outcome: null     // 'win' | 'lose'
+    };
+  }
+
+  let s = freshState();
+
+  function addPopup(x, y, text, color) {
+    s.popups.push({ x, y, text, color, life: 45, maxLife: 45 });
+  }
+
+  function updatePopups() {
+    s.popups.forEach(p => { p.y -= 0.6; p.life--; });
+    s.popups = s.popups.filter(p => p.life > 0);
+  }
+
+  function rand(min, max) { return Math.floor(min + Math.random() * (max - min + 1)); }
+
+  function setButtonsEnabled(enabled) {
+    btnSpark.disabled = !enabled;
+    btnGuard.disabled = !enabled;
+    btnDischarge.disabled = !enabled || s.player.charge < s.player.maxCharge;
+  }
+
+  function playerAttack(kind) {
+    if (s.turn !== 'player') return;
+
+    if (kind === 'spark') {
+      const dmg = rand(6, 9);
+      s.enemy.hp = Math.max(0, s.enemy.hp - dmg);
+      s.player.charge = Math.min(s.player.maxCharge, s.player.charge + 1);
+      s.zap = { timer: 14 };
+      s.enemyFlash = 10;
+      addPopup(176, 40, '-' + dmg, '#5FE87A');
+      s.log = `Искра! Урон: ${dmg}.`;
+    } else if (kind === 'discharge') {
+      if (s.player.charge < s.player.maxCharge) return;
+      const dmg = rand(22, 28);
+      s.enemy.hp = Math.max(0, s.enemy.hp - dmg);
+      s.player.charge = 0;
+      s.zap = { timer: 20, big: true };
+      s.enemyFlash = 16;
+      s.shake = 10;
+      addPopup(176, 36, '-' + dmg, '#E8C547');
+      s.log = `Разряд! Мощный удар: ${dmg}!`;
+    } else if (kind === 'guard') {
+      s.player.guarding = true;
+      s.player.charge = Math.min(s.player.maxCharge, s.player.charge + 1);
+      s.log = 'Ты приготовился блокировать следующий удар.';
+    }
+
+    setButtonsEnabled(false);
+
+    if (s.enemy.hp <= 0) {
+      setTimeout(() => triggerVictory(), 500);
+      return;
+    }
+
+    setTimeout(() => enemyTurn(), 900);
+  }
+
+  function enemyTurn() {
+    s.turn = 'enemy';
+    const surge = Math.random() < 0.2;
+    let dmg = surge ? rand(12, 16) : rand(5, 10);
+
+    if (s.player.guarding) {
+      dmg = Math.round(dmg / 2);
+      s.log = `Сбой атакует... но щит смягчил удар! Урон: ${dmg}.`;
+    } else {
+      s.log = surge
+        ? `Сбой выбросил всплеск помех! Урон: ${dmg}!`
+        : `Сбой атакует. Урон: ${dmg}.`;
+    }
+
+    s.player.guarding = false;
+    s.player.hp = Math.max(0, s.player.hp - dmg);
+    s.playerFlash = surge ? 16 : 10;
+    if (surge) s.shake = 8;
+    addPopup(52, 82, '-' + dmg, '#E8546B');
+
+    if (s.player.hp <= 0) {
+      setTimeout(() => triggerDefeat(), 500);
+      return;
+    }
+
+    setTimeout(() => {
+      s.turn = 'player';
+      setButtonsEnabled(true);
+    }, 700);
+  }
+
+  function triggerVictory() {
+    s.turn = 'over';
+    s.outcome = 'win';
+    overlayTitleEl.textContent = 'Сбой побеждён';
+    document.getElementById('finalCode').textContent = FINAL_CODE;
+    overlaySubEl.textContent = 'Это код части 2 — неси его дальше.';
+    document.getElementById('finalCode').style.display = '';
+    document.getElementById('copyBtn').style.display = '';
+    overlayEl.classList.add('show');
+  }
+
+  function triggerDefeat() {
+    s.turn = 'over';
+    s.outcome = 'lose';
+    overlayTitleEl.textContent = 'Тебя перезагрузило';
+    document.getElementById('finalCode').style.display = 'none';
+    document.getElementById('copyBtn').style.display = 'none';
+    overlaySubEl.textContent = 'Ничего, попробуй ещё раз.';
+    overlayEl.classList.add('show');
+    btnRetry.style.display = '';
+  }
+
+  btnSpark.addEventListener('click', () => playerAttack('spark'));
+  btnDischarge.addEventListener('click', () => playerAttack('discharge'));
+  btnGuard.addEventListener('click', () => playerAttack('guard'));
+  btnRetry.addEventListener('click', () => {
+    s = freshState();
+    overlayEl.classList.remove('show');
+    btnRetry.style.display = 'none';
+    setButtonsEnabled(true);
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('copyBtn');
+    try {
+      await navigator.clipboard.writeText(FINAL_CODE);
+      btn.textContent = 'Скопировано';
+      setTimeout(() => { btn.textContent = 'Скопировать код'; }, 1500);
+    } catch {
+      btn.textContent = FINAL_CODE;
+    }
+  });
+
+  // --- Drawing (low-res, blocky sprites — no smooth arcs/gradients) ---
+  const HERO_POS = { x: 52, y: 96 };
+  const ENEMY_POS = { x: 176, y: 52 };
+
+  function drawStage() {
+    // flat pixel bands instead of a smooth gradient
+    ctx.fillStyle = '#6B8CC9';
+    ctx.fillRect(0, 0, W, 70);
+    ctx.fillStyle = '#8FAEDB';
+    ctx.fillRect(0, 70, W, 30);
+    ctx.fillStyle = '#C9D9F2';
+    ctx.fillRect(0, 100, W, H - 100);
+
+    // blocky sun
+    ctx.fillStyle = '#F2E6A8';
+    ctx.fillRect(206, 12, 14, 14);
+    ctx.fillStyle = '#F2D33D';
+    ctx.fillRect(208, 14, 10, 10);
+
+    // blocky clouds
+    ctx.fillStyle = '#EAF2FC';
+    ctx.fillRect(20, 16, 20, 6);
+    ctx.fillRect(14, 22, 32, 6);
+    ctx.fillRect(150, 10, 16, 5);
+    ctx.fillRect(144, 15, 28, 5);
+
+    // distant layered hills for depth
+    ctx.fillStyle = '#7FA88A';
+    ctx.fillRect(0, 84, 70, 16);
+    ctx.fillRect(60, 78, 60, 22);
+    ctx.fillStyle = '#6B9A78';
+    ctx.fillRect(120, 88, 60, 12);
+    ctx.fillRect(190, 80, 50, 20);
+
+    // ground platforms — chunky rectangular islands, not ellipses
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(30, 116, 60, 6); // player shadow
+    ctx.fillRect(156, 72, 60, 6); // enemy shadow
+
+    drawPlatform(18, 118, 88);
+    drawPlatform(144, 74, 88);
+  }
+
+  function drawPlatform(px, py, pw) {
+    ctx.fillStyle = '#3E6B48';
+    ctx.fillRect(px, py, pw, 12);
+    ctx.fillStyle = '#5A9A62';
+    ctx.fillRect(px, py, pw, 3);
+
+    // dirt/pebble texture so the platform reads as ground, not a flat bar
+    ctx.fillStyle = '#345A3D';
+    for (let i = 0; i < pw; i += 11) {
+      ctx.fillRect(px + i + 3, py + 6, 3, 2);
+    }
+    ctx.fillStyle = '#8FC496';
+    for (let i = 0; i < pw; i += 17) {
+      ctx.fillRect(px + i + 6, py + 2, 2, 1);
+    }
+
+    // small bushes framing the platform edges
+    ctx.fillStyle = '#2E5A3A';
+    ctx.fillRect(px - 4, py - 4, 8, 6);
+    ctx.fillRect(px + pw - 4, py - 4, 8, 6);
+    ctx.fillStyle = '#4A8A56';
+    ctx.fillRect(px - 3, py - 5, 6, 3);
+    ctx.fillRect(px + pw - 3, py - 5, 6, 3);
+  }
+
+  function drawHero() {
+    const x = HERO_POS.x, y = HERO_POS.y;
+    const bobFrame = Math.floor(Date.now() / 500) % 2;
+    const bob = bobFrame === 0 ? 0 : -1;
+    const flashOn = s.playerFlash > 0 && Math.floor(s.playerFlash / 3) % 2 === 0;
+
+    ctx.save();
+    ctx.translate(x, y + bob);
+    if (flashOn) ctx.globalAlpha = 0.4;
+
+    // ears
+    ctx.fillStyle = '#2E9E93';
+    ctx.fillRect(-11, -20, 6, 12);
+    ctx.fillRect(5, -20, 6, 12);
+    ctx.fillStyle = '#4FD1C5';
+    ctx.fillRect(-10, -19, 4, 8);
+    ctx.fillRect(6, -19, 4, 8);
+
+    // body
+    ctx.fillStyle = '#4FD1C5';
+    ctx.fillRect(-13, -8, 26, 22);
+    // belly
+    ctx.fillStyle = '#DFF7F4';
+    ctx.fillRect(-7, -2, 14, 14);
+    // eyes
+    ctx.fillStyle = '#1A1520';
+    ctx.fillRect(-7, -3, 3, 4);
+    ctx.fillRect(4, -3, 3, 4);
+    // feet
+    ctx.fillStyle = '#2E9E93';
+    ctx.fillRect(-11, 13, 8, 5);
+    ctx.fillRect(3, 13, 8, 5);
+
+    // spark antenna
+    ctx.fillStyle = '#2E9E93';
+    ctx.fillRect(-1, -26, 2, 10);
+    const glowOn = Math.floor(Date.now() / 260) % 2 === 0;
+    ctx.fillStyle = glowOn ? '#F2D33D' : '#C9A63C';
+    ctx.fillRect(-3, -30, 6, 6);
+
+    ctx.restore();
+  }
+
+  function drawEnemy() {
+    const x = ENEMY_POS.x, y = ENEMY_POS.y;
+    const bobFrame = Math.floor(Date.now() / 420) % 2;
+    const bob = bobFrame === 0 ? 0 : -1;
+    const flashOn = s.enemyFlash > 0 && Math.floor(s.enemyFlash / 3) % 2 === 0;
+    const w = 34, h = 30;
+
+    ctx.save();
+    ctx.translate(x - w / 2, y - h / 2 + bob);
+    if (flashOn) ctx.globalAlpha = 0.5;
+
+    // silhouette block
+    ctx.fillStyle = '#1C1626';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#241C30';
+    ctx.fillRect(2, 2, w - 4, h - 4);
+
+    // shuffling glyphs — the signature of this enemy
+    ctx.font = '6px "Press Start 2P", monospace';
+    ctx.textAlign = 'left';
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 3; col++) {
+        const seed = Math.floor(Date.now() / 90) + row * 7 + col * 3;
+        const ch = GLYPHS[seed % GLYPHS.length];
+        ctx.fillStyle = (row + col) % 2 === 0 ? '#5FE87A' : '#E85FD1';
+        ctx.fillText(ch, 4 + col * 10, 10 + row * 7);
+      }
+    }
+
+    // scanlines
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    for (let ly = 0; ly < h; ly += 4) {
+      ctx.fillRect(0, ly, w, 1);
+    }
+
+    ctx.restore();
+  }
+
+  function drawZap() {
+    if (!s.zap) return;
+    s.zap.timer--;
+    if (s.zap.timer <= 0) { s.zap = null; return; }
+
+    const x1 = HERO_POS.x, y1 = HERO_POS.y - 10, x2 = ENEMY_POS.x, y2 = ENEMY_POS.y;
+    ctx.fillStyle = s.zap.big ? '#E8C547' : '#8FF0E6';
+    const steps = 6;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const nx = x1 + (x2 - x1) * t + (Math.random() - 0.5) * 8;
+      const ny = y1 + (y2 - y1) * t + (Math.random() - 0.5) * 8;
+      ctx.fillRect(Math.round(nx) - 1, Math.round(ny) - 1, 2 + (s.zap.big ? 1 : 0), 2 + (s.zap.big ? 1 : 0));
+    }
+  }
+
+  function drawBar(x, y, w, h, ratio, label, hpText) {
+    ctx.fillStyle = 'rgba(20,17,31,0.6)';
+    ctx.fillRect(x - 3, y - 9, w + 6, h + 20);
+
+    ctx.font = '5px "Press Start 2P", monospace';
+    ctx.fillStyle = '#E9E6F2';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, x, y - 2);
+
+    ctx.fillStyle = '#2A2640';
+    ctx.fillRect(x, y, w, h);
+    const color = ratio > 0.5 ? '#5FC26E' : ratio > 0.2 ? '#E8C547' : '#E8546B';
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, Math.round(w * Math.max(ratio, 0)), h);
+    ctx.strokeStyle = '#14111F';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+    if (hpText) {
+      ctx.font = '5px "Press Start 2P", monospace';
+      ctx.fillStyle = '#E9E6F2';
+      ctx.textAlign = 'right';
+      ctx.fillText(hpText, x + w, y + h + 8);
+    }
+  }
+
+  function drawCharge() {
+    ctx.font = '5px "Press Start 2P", monospace';
+    ctx.fillStyle = '#E9E6F2';
+    ctx.textAlign = 'left';
+    ctx.fillText('ЗАРЯД', 8, 143);
+    for (let i = 0; i < s.player.maxCharge; i++) {
+      ctx.fillStyle = i < s.player.charge ? '#E8C547' : '#2A2640';
+      ctx.fillRect(38 + i * 9, 138, 7, 7);
+      ctx.strokeStyle = '#14111F';
+      ctx.strokeRect(38 + i * 9 + 0.5, 138.5, 6, 6);
+    }
+  }
+
+  function drawLog() {
+    ctx.fillStyle = 'rgba(20,17,31,0.8)';
+    ctx.fillRect(4, 152, W - 8, 24);
+    ctx.strokeStyle = '#2A2640';
+    ctx.strokeRect(4.5, 152.5, W - 9, 23);
+    ctx.font = '5px "Press Start 2P", monospace';
+    ctx.fillStyle = '#E9E6F2';
+    ctx.textAlign = 'left';
+    wrapText(s.log, 8, 162, W - 16, 8);
+  }
+
+  function wrapText(text, x, y, maxWidth, lineHeight) {
+    const words = text.split(' ');
+    let line = '';
+    let yy = y;
+    for (let i = 0; i < words.length; i++) {
+      const test = line + words[i] + ' ';
+      if (ctx.measureText(test).width > maxWidth && line !== '') {
+        ctx.fillText(line, x, yy);
+        line = words[i] + ' ';
+        yy += lineHeight;
+      } else {
+        line = test;
+      }
+    }
+    ctx.fillText(line, x, yy);
+  }
+
+  function drawPopups() {
+    s.popups.forEach(p => {
+      ctx.globalAlpha = Math.max(p.life / p.maxLife, 0);
+      ctx.font = '6px "Press Start 2P", monospace';
+      ctx.fillStyle = p.color;
+      ctx.textAlign = 'center';
+      ctx.fillText(p.text, p.x, p.y);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+
+    if (s.shake > 0) {
+      s.shake--;
+      ctx.translate(Math.round((Math.random() - 0.5) * 3), Math.round((Math.random() - 0.5) * 3));
+    }
+
+    drawStage();
+    drawEnemy();
+    drawHero();
+    drawZap();
+    drawPopups();
+
+    drawBar(150, 30, 82, 6, s.enemy.hp / s.enemy.maxHp, 'СБОЙ', `${s.enemy.hp}/${s.enemy.maxHp}`);
+    drawBar(8, 122, 82, 6, s.player.hp / s.player.maxHp, 'ТЫ', `${s.player.hp}/${s.player.maxHp}`);
+    drawCharge();
+    drawLog();
+
+    ctx.restore();
+
+    if (s.playerFlash > 0) s.playerFlash--;
+    if (s.enemyFlash > 0) s.enemyFlash--;
+    updatePopups();
+  }
+
+  function loop() {
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  ctx.imageSmoothingEnabled = false;
+  setButtonsEnabled(true);
+  loop();
+})();
+</script>
+
+</body>
+</html>
